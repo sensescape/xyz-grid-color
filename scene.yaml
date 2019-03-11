@@ -1,0 +1,1001 @@
+# Author: Geraldine Sarmiento
+
+# Tangram Blocks
+# https://tangrams.github.io/blocks/
+# Patricio Gonzalez Vivo
+
+cameras:
+    camera1:
+        type: perspective
+
+global:
+    # default order for basemap features
+    feature_order: function() { return feature.sort_rank; }
+    feature_order_down_1: function() { return feature.sort_rank - 1; }
+    building_extrude_height: |
+        function () { return feature.height > 16 || $zoom >= 16; }
+
+    # Sign up for a Mapzen API key to enjoy higher rate limits
+    # https://mapzen.com/documentation/overview/#developer-accounts-and-api-keys
+    sdk_api_key: '3eqm2_bfTNGZ85ar20fVyA'     # set this value to your Mapzen API key
+
+
+scene:
+    background:
+        color: [0.980,0.978,0.970]
+
+sources:
+    # mapzen:
+    #     type: MVT
+    #     # url:  https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
+    #     url: https://xyz.api.here.com/tiles/osmbase/512/all/{z}/{x}/{y}.mvt
+    #     url_params:
+    #         api_key: JJiaZE63TZObzPrmx0TQkw
+    #     tile_size: 512
+    #     max_zoom: 16
+
+    mapzen:
+        type: MVT
+        url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
+        url_params:
+            api_key: global.sdk_api_key
+        rasters: [normals-elevation]
+        tile_size: 512
+        max_zoom: 16
+    normals-elevation:
+        type: Raster
+        url: https://tile.nextzen.org/tilezen/terrain/v1/512/normal/{z}/{x}/{y}.png
+        url_params:
+            api_key: global.sdk_api_key
+        tile_size: 512
+        max_zoom: 15
+
+    xyz-osm:
+        type: MVT
+        url: https://xyz.api.here.com/tiles/osmbase/256/all/{z}/{x}/{y}.mvt
+
+layers:
+    earth:
+        data: { source: xyz-osm, layer: earth }
+        draw:
+            polygons:
+                style: earth-grid
+                order: global.feature_order
+                color: [1.000,1.000,1.000]
+
+    water:
+        data: { source: xyz-osm, layer: water }
+        draw:
+            polygons:
+                style: water-grid
+                order: global.feature_order
+                color: [1.000,1.000,1.000]
+
+        lakes:
+            filter:
+                all:
+                    - kind: [ocean, lake, water, riverbank, reservoir, swimming_pool]
+                any:
+                    # limit show smaller landuse areas to higher zooms
+                    - { $zoom: [1],  area: { min: 10000000000 } }
+                    - { $zoom: [2],  area: { min: 7000000000 } }
+                    # some weird natural earth scale set transition
+                    - { $zoom: [3],  area: { min: 5000000000 } }
+                    - { $zoom: [4],  area: { min: 300000000 } }
+                    - { $zoom: [5],  area: { min: 50000000 } }
+                    - { $zoom: [6],  area: { min: 50000000 } }
+                    - { $zoom: [7],  area: { min: 50000000 } }
+                    - { $zoom: [8],  area: { min: 50000000 } }
+                    - { $zoom: [9],  area: { min: 15000000 } }
+                    - { $zoom: [10], area: { min: 4000000 } }
+                    - { $zoom: [11], area: { min: 1000000 } }
+                    - { $zoom: [12], area: { min: 250000 } }
+                    - { $zoom: [13], area: { min: 150000 } }
+                    - { $zoom: [14], area: { min: 40000 } }
+                    - { $zoom: { min: 15 } }
+            draw:
+                polygons:
+                    color: [1.000,1.000,1.000]
+
+        other-water-areas:
+            filter: { not: { kind: [ocean, lake, water, reservoir] }, $zoom: { min: 11 }, area: { min: 100 } }
+            draw:
+                polygons:
+                    color: [1.000,1.000,1.000]
+
+        water-boundary-ocean:
+            filter: { boundary: true, kind: ocean, $zoom: { min: 1 } }
+            draw:
+                lines:
+                    visible: true
+                    order: global.feature_order
+                    color: [0.790,0.852,0.940]
+                    width: 2px
+                    join: round
+
+        water_boundaries-not-ocean:
+            filter:
+                all:
+                    - boundary: true
+                    - not: { kind: ocean }
+                    - $zoom: { min: 8 }
+                any:
+                    # limit show smaller landuse areas to higher zooms
+                    - { $zoom: [1],  area: { min: 10000000000 } }
+                    - { $zoom: [2],  area: { min: 7000000000 } }
+                    # some weird natural earth scale set transition
+                    - { $zoom: [3],  area: { min: 5000000000 } }
+                    - { $zoom: [4],  area: { min: 300000000 } }
+                    - { $zoom: [5],  area: { min: 50000000 } }
+                    - { $zoom: [6],  area: { min: 50000000 } }
+                    - { $zoom: [7],  area: { min: 50000000 } }
+                    - { $zoom: [8],  area: { min: 50000000 } }
+                    - { $zoom: [9],  area: { min: 15000000 } }
+                    - { $zoom: [10], area: { min: 4000000 } }
+                    - { $zoom: [11], area: { min: 1000000 } }
+                    - { $zoom: [12], area: { min: 250000 } }
+                    - { $zoom: [13], area: { min: 150000 } }
+                    - { $zoom: [14], area: { min: 40000 } }
+                    - { $zoom: { min: 15 } }
+            draw:
+                lines:
+                    visible: true
+                    order: global.feature_order
+                    color: [0.790,0.852,0.940]
+                    width: 2px
+                    join: round
+
+            swimming-pools-early:
+                filter: { kind: swimming_pool, $zoom: { max: 19 } }
+                draw:
+                    lines:
+                        visible: false
+            riverbank:
+                # river boundaries like the thames in london, la seine in paris
+                filter: { kind: riverbank }
+                draw:
+                    lines:
+                        visible: true
+                        color: [0.790,0.852,0.940]
+                        width: 2px
+
+    roads:
+        data: { source: xyz-osm, layer: roads }
+        draw:
+            lines:
+                #color: black
+                width: 1px
+                order: global.feature_order
+                # but give them all the same outline
+                outline:
+                    order: 352
+
+        early:
+            filter: { $zoom: { max: 15 } }
+            draw:
+                lines:
+                    outline:
+                        order: global.feature_order
+
+        bridges-tunnels:
+            filter: { any: [is_bridge: true, is_tunnel: true] }
+            draw:
+                lines:
+                    # cap: butt
+                    outline:
+                        # except bridges and tunnels, their outlines should also self-sort
+                        order: global.feature_order
+
+        # default outlines starting at zoom 16
+        default-outline-width:
+            filter: { $zoom: { min: 16 } }
+            draw:
+                lines:
+                    outline:
+                        width: function () { return 3/16 * Math.log($zoom); }
+
+        natural_earth_highways:
+            filter: { $zoom: { min: 5, max: 8 } }
+            draw:
+                lines:
+                    cap: round
+                    join: round
+                    color: [0.860,0.583,0.464]
+                    width: 1px
+            major_road:
+                filter: { kind: major_road }
+                draw:
+                    lines:
+                        color: [0.790,0.711,0.711]
+                        width: 0.5px
+
+        highway:
+            filter: { kind: highway, $zoom: { min: 8 } }
+            draw:
+                lines:
+                    color: [[5,[0.860,0.583,0.464]], [12,[0.980,0.978,0.970]]]
+                    width: [[5, 0px], [8, 0.1px], [12, 0.1px], [14, 2px], [16, 6.5px], [17, 22m]]
+                    outline:
+                        color: [0.860,0.583,0.464]
+                        width: [[5, 0px], [12, 0.5px], [14, 1px]]
+
+            link:
+                filter: { is_link: true } # on- and off-ramps, etc
+                draw:
+                    lines:
+                        color: [0.790,0.711,0.711]
+                        width: [[8, 0px], [13, 0px], [18, 2px]]
+                        outline:
+                            width: 0px
+                early_link:
+                    filter: { $zoom: { max: 15 } }
+                    draw:
+                        lines:
+                            # except bridges and tunnels, their outlines should also self-sort
+                            order: 352
+                tunnel-link:
+                    filter: {is_tunnel: true, $zoom: {min: 13} }
+                    draw:
+                        lines:
+                            color: [0.980,0.978,0.970]
+                            outline:
+                                color: [0.790,0.711,0.711]
+
+            tunnel:
+                filter: {is_tunnel: true, $zoom: {min: 13} }
+                draw:
+                    lines:
+                        color: [0.980,0.978,0.970]
+                        outline:
+                            color: [0.900,0.900,0.900]
+
+            highway_bridge:
+                filter: {is_bridge: true}
+                draw:
+                    lines:
+                        cap: round
+                        outline:
+                            cap: butt
+
+        major_road:
+            filter: { kind: major_road, $zoom: { min: 13 } }
+            draw:
+                lines:
+                    color: [0.790,0.711,0.711]
+                    width: [[13,0px], [18,2px]]
+
+        minor_road:
+            filter: { kind: minor_road, not: { kind_detail: service }, $zoom: { min: 16 } }
+            draw:
+                lines:
+                    color: [0.790,0.711,0.711]
+                    width: [[16,0px], [18,2px]]
+
+    landuse:
+        data: { source: xyz-osm }
+        draw:
+            polygons:
+                order: global.feature_order
+                visible: false
+            lines:
+                order: global.feature_order
+                visible: false
+        # tier1:
+        national_park:
+            filter:
+                all:
+                    - kind: [national_park, battlefield, protected_area]
+                any:
+                    - not: { operator: [ "United States Forest Service" ] }
+                    - protect_class: ['2','3','5']
+            draw:
+                polygons:
+                    style: green-grid
+                    color: [1.000,1.000,1.000]
+                    visible: true
+                lines:
+                    color: [0.810,0.880,0.819]
+                    width: 2px
+                    visible: true
+            us_national_park:
+                # yosemite national park, death valley national park, grand canyon national park
+                filter:
+                    any:
+                        - operator: [ "United States National Park Service" ]
+                        - protect_class: ['2','3','5']
+                draw:
+                    polygons:
+                        style: green-grid
+                        color: [0.300,0.300,0.300]
+                        visible: true
+                    lines:
+                        color: [0.810,0.880,0.819]
+                        width: 2px
+                        visible: true
+
+
+        conservation:
+            filter:
+                $zoom: { min: 4 }
+                kind: [protected_area, nature_reserve, national_park]
+                not: { protect_class: ['2','3','5']}
+            draw:
+                polygons:
+                    style: green-grid
+                    color: [0.300,0.300,0.300]
+                    visible: true
+                lines:
+                    color: [0.810,0.880,0.819]
+                    width: 2px
+                    visible: true
+
+        national_forest_level_6:
+            filter:
+                all:
+                    - kind: forest
+                any:
+                    - protect_class: ['6']
+                    - operator: ['United States Forest Service']
+            draw:
+                polygons:
+                    style: green-grid
+                    color: [0.300,0.300,0.300]
+                    visible: true
+                lines:
+                    color: [0.810,0.880,0.819]
+                    width: 2px
+                    visible: true
+
+        forest-landcover:
+            filter: { kind: [forest, natural_forest, wood, natural_wood, natural_park], $zoom: { min: 10 }, not: { operator: "United States Forest Service" } }
+            draw:
+                polygons:
+                    style: green-grid
+                    color: [0.300,0.300,0.300]
+                    visible: true
+                lines:
+                    color: [0.810,0.880,0.819]
+                    width: 2px
+                    visible: true
+
+        parks-and-national-forests-not-national-park:
+            filter:
+                all:
+                    - $zoom: { min: 4 }
+                    - kind: [park, national_park]
+                any:
+                    - not: { operator: [ "United States National Park Service", "United States Forest Service" ] }
+                    - not: { protect_class: ['2','3','5','6'] }
+            # default for national forests and more?
+            draw:
+                polygons:
+                    style: green-grid
+                    color: [0.300,0.300,0.300]
+                    visible: true
+                lines:
+                    color: [0.810,0.880,0.819]
+                    width: 2px
+                    visible: true
+            national_park:
+                #filter: function() { return feature.name && (feature.name.indexOf('National Park') > -1); }
+                filter:
+                    all:
+                        - kind: national_park
+                        - not: [ protect_class: ['2','3','5','6'], operator: [ "United States National Park Service"] ]
+                draw:
+                    polygons:
+                        style: green-grid
+                        visible: true
+
+
+    buildings:
+        data: { source: xyz-osm, layer: buildings }
+        filter:
+            not: { location: underground }
+        draw:
+            polygons:
+                visible: false
+                order: 329
+                color: [1.000,1.000,1.000]
+            lines:
+                visible: false
+                order: 329
+
+        footprints:
+            filter:
+                any:
+                    - { $zoom: [13], scale_rank: [1,2,3] }
+                    - { $zoom: [14], scale_rank: [1,2,3] }
+                    - { $zoom: [15], height: { min: 100 } }
+                    - { $zoom: [15], area: { min: 700 } }
+                    - { $zoom: [15], volume: { min: 100000 } }
+                    - { $zoom: [16], area: { min: 100 } }
+                    - { $zoom: [16], volume: { min: 50000 } }
+                    - { $zoom: { min: 17 }, area: true }
+            draw:
+                polygons:
+                    visible: true
+                    style: building-grid
+                lines:
+                    visible: true
+                    color: [0.800,0.722,0.464]
+                    width: [[12,0.5px], [14,2px]]
+
+styles:
+    space-constant:
+        shaders:
+            blocks:
+                global: |
+                    // Get the constant coordinates (glitches on zooms)
+                    // ================================
+                    vec2 getConstantCoords () {
+                        #ifdef TANGRAM_FRAGMENT_SHADER
+                        const float pixel_scale = 695.;
+                        float meter_pixels = u_meters_per_pixel / u_device_pixel_ratio;
+                        vec2 st = gl_FragCoord.xy/pixel_scale;
+                        const float dot_wrap = 1000.;
+                        st += mod(u_map_position.xy / meter_pixels, dot_wrap)/pixel_scale;
+                        return st;
+                        #else
+                        return vec2(0.0,0.0);
+                        #endif
+                    }
+
+    tools-tilecoords:
+        shaders:
+            blocks:
+                global: |
+                    // Varying to be added to both vertex and fragment shaders
+                    varying vec2 v_pos;
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    vec2 TileCoords() {
+                        return fract(v_pos);
+                    }
+                    #endif
+                position: |
+                    v_pos = modelPosition().xy;
+    tools-grid:
+        mix: tools-tilecoords
+        shaders:
+            blocks:
+                global: |
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    bool grid(vec2 st, float res, float press) {
+                        vec2 grid = fract(st * res);
+                        return (grid.x < res * press) || (grid.y < res * press);
+                    }
+                    float TileGrid(float res) {
+                        vec2 st = TileCoords() * 100. * res;
+                        float pct = 0.0;
+                        float press = 0.3 + (1.0 - fract(u_map_position.z)) * 0.1;
+                        if (grid(st, 0.1, press)) { pct += 0.5; }
+                        return pct;
+                    }
+                    float TileGrid() {
+                        return mix(TileGrid(1.), TileGrid(2.), fract(u_map_position.z));
+                    }
+                    #endif
+    tools-grid2:
+        mix: tools-tilecoords
+        shaders:
+            blocks:
+                global: |
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    bool grid(vec2 st, float res, float press) {
+                        vec2 grid = fract(st * res);
+                        return (grid.x < res * press) || (grid.y < res * press);
+                    }
+                    float TileGrid(float res) {
+                        vec2 st = TileCoords() * 200. * res;
+                        float pct = 0.0;
+                        float press = 0.6 + (1.0 - fract(u_map_position.z)) * 0.1;
+                        if (grid(st, 0.1, press)) { pct += 0.5; }
+                        return pct;
+                    }
+                    float TileGrid() {
+                        return mix(TileGrid(1.), TileGrid(2.), fract(u_map_position.z));
+                    }
+                    #endif
+
+    tools-grid3:
+        mix: tools-tilecoords
+        shaders:
+            blocks:
+                global: |
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    bool grid(vec2 st, float res, float press) {
+                        vec2 grid = fract(st * res);
+                        return (grid.x < res * press) || (grid.y < res * press);
+                    }
+                    float TileGrid(float res) {
+                        vec2 st = TileCoords() * 400. * res;
+                        float pct = 0.0;
+                        float press = 0.9 + (1.0 - fract(u_map_position.z)) * 0.1;
+                        if (grid(st, 0.1, press)) { pct += 0.5; }
+                        return pct;
+                    }
+                    float TileGrid() {
+                        return mix(TileGrid(1.), TileGrid(2.), fract(u_map_position.z));
+                    }
+                    #endif
+
+    earth-grid:
+        base: polygons
+        mix: [tools-grid,filter-grain]
+        shaders:
+            defines:
+                GRAIN_AMOUNT: .2
+                NUM_OCTAVES: 3
+                GRAIN_BLEND: ADD
+            blocks:
+                filter: |
+                    color.rgb = vec3(0.980,0.978,0.970);
+                    color.rgb = mix(color.rgb, vec3(0.760,0.744,0.570), TileGrid());
+
+    green-grid:
+        base: polygons
+        mix: [tools-grid2,filter-grain]
+        shaders:
+            defines:
+                GRAIN_AMOUNT: .2
+                NUM_OCTAVES: 3
+                GRAIN_BLEND: MULTIPLY
+            blocks:
+                filter: |
+                    color.rgb = vec3(0.972,0.980,0.960);
+                    color.rgb = mix(color.rgb, vec3(0.429,0.650,0.458), TileGrid());
+
+    water-grid:
+        base: polygons
+        mix: [tools-grid3,filter-grain]
+        shaders:
+            defines:
+                GRAIN_AMOUNT: .2
+                NUM_OCTAVES: 3
+                GRAIN_BLEND: MULTIPLY
+            blocks:
+                filter: |
+                    color.rgb = vec3(0.980,0.978,0.970);
+                    color.rgb = mix(color.rgb, vec3(0.625,0.731,0.880), TileGrid());
+
+    building-grid:
+        base: polygons
+        mix: [tools-grid,filter-grain]
+        shaders:
+            defines:
+                GRAIN_AMOUNT: .2
+                NUM_OCTAVES: 3
+                GRAIN_BLEND: MULTIPLY
+            blocks:
+                filter: |
+                    color.rgb = vec3(0.980,0.978,0.970);
+                    color.rgb = mix(color.rgb, vec3(0.980,0.889,0.588), TileGrid());
+
+    filter-grain:
+        mix: [block, generative-fbm]
+        doc:
+            author: 
+                name: Patricio Gonzalez Vivo
+                twitter: patriciogv
+            version: 0.0.1
+            tangram-version: 0.0.7
+            licence: MIT
+            description: |
+                Apply a lens grain effect to the scene.
+            examples:
+                grain:
+                    url: https://tangrams.github.io/tangram-sandbox/styles/grain.yaml
+                    img: https://tangrams.github.io/tangram-sandbox/styles/grain.png
+                    lines: 29
+        ui:
+            shaders:
+                defines:
+                    GRAIN_AMOUNT: 
+                        type: number
+                        label: Amount
+                        range: 
+                            min: 0.
+                            max: 1.
+                            step: 0.01
+                    GRAIN_BLEND: 
+                        type: dropdownArray
+                        label: 'Blend mode'
+                        values: ['ADD', 'SUBTRACT', 'MULTIPLY']
+
+        test:
+            grain: { uniforms: { u_tex0: "https://tangrams.github.io/blocks/test.jpg" }, blocks: { color: "    color = texture2D(u_tex0,v_texcoord.xy);" } }
+
+        shaders:
+            defines:
+                GRAIN_AMOUNT: .3
+                GRAIN_BLEND: 'SUBTRACT'
+            blocks:
+                global: |
+                    #ifdef TANGRAM_FRAGMENT_SHADER
+                    float grain () {
+                        vec2 pos = gl_FragCoord.xy;
+                        vec2 st = pos/u_resolution.xy-vec2(.5);
+                        return dot(st,st)+(fbm(pos*0.6)*0.1);
+                    }
+                    #endif
+                filter: |
+                    // Apply the grain in the amount defined on GRAIN_AMOUNT
+                    color.rgb = color.rgb GRAIN_BLEND (grain()*GRAIN_AMOUNT);
+
+    block:
+        shaders:
+            defines:
+                ADD: '+'
+                SUBTRACT: '-'
+                MULTIPLY: '*'
+
+                PI: 3.1415926535897932384626433832795
+                TWO_PI: 6.2831853071795864769252867665590
+                HALF_PI: 1.5707963267948966192313216916398
+                QUATER_PI: .785398163
+
+                EPSILON: 0.0000001
+
+                deg2rad(d): (((d)*3.1415926535897932384626433832795)/180.0)
+                rad2deg(d): (((d)*180.0)/3.1415926535897932384626433832795)
+
+    generative-fbm:
+        doc:
+            author: 
+                name: Patricio Gonzalez Vivo
+                twitter: patriciogv
+            version: 0.0.1
+            tangram-version: 0.0.7
+            licence: MIT
+            description: |
+                Set of Fractal Brownian Motion functions.
+                For more information on this theme read [this chapter of The Book of Shaders about fractal Brownian Motion](http://thebookofshaders.com/13/).
+        test:
+            fbm_float_5oct: { blocks: { color: "    color.rgb += fbm(v_texcoord.x);" } }
+            fbm_vec2_5oct: { blocks: { color: "    color.rgb += fbm(v_texcoord);" } }
+            fbm_vec3_5oct: { blocks: { color: "    color.rgb += fbm(vec3(v_texcoord,u_time));" } }
+            fbm_float_3oct: { defines: { NUM_OCTAVES: 3 }, blocks: { color: "    color.rgb += fbm(v_texcoord.x);" } }
+            fbm_vec2_3oct: { defines: { NUM_OCTAVES: 3 }, blocks: { color: "    color.rgb += fbm(v_texcoord);" } }
+            fbm_vec3_3oct: { defines: { NUM_OCTAVES: 3 }, blocks: { color: "    color.rgb += fbm(vec3(v_texcoord,u_time));" } }
+            fbm_float_8oct: { defines: { NUM_OCTAVES: 8 }, blocks: { color: "    color.rgb += fbm(v_texcoord.x);" } }
+            fbm_vec2_8oct: { defines: { NUM_OCTAVES: 8 }, blocks: { color: "    color.rgb += fbm(v_texcoord);" } }
+            fbm_vec3_8oct: { defines: { NUM_OCTAVES: 8 }, blocks: { color: "    color.rgb += fbm(vec3(v_texcoord,u_time));" } }
+
+        mix: generative-noise
+        shaders:
+            defines:
+                NUM_OCTAVES: 5
+            blocks:
+                global: |
+                    // Fractional Brownian motion for 1, 2 and 3 dimensions
+                    float fbm (in float x) {
+                        float v = 0.0;
+                        float a = 0.5;
+                        float shift = float(100.0);
+                        for (int i = 0; i < int(NUM_OCTAVES); ++i) {
+                            v += a * noise(x);
+                            x = x * 2.0 + shift;
+                            a *= 0.5;
+                        }
+                        return v;
+                    }
+                    float fbm (in vec2 xy) {
+                        float v = 0.0;
+                        float a = 0.5;
+                        vec2 shift = vec2(100.0);
+                        mat2 rot = mat2(cos(0.5), sin(0.5), 
+                                        -sin(0.5), cos(0.50));
+                        for (int i = 0; i < int(NUM_OCTAVES); ++i) {
+                            v += a * noise(xy);
+                            xy = rot * xy * 2.0 + shift;
+                            a *= 0.5;
+                        }
+                        return v;
+                    }
+                    float fbm (in vec3 xyz) {
+                        float v = 0.0;
+                        float a = 0.5;
+                        vec3 shift = vec3(100.0);
+                        for (int i = 0; i < int(NUM_OCTAVES); ++i) {
+                            v += a * noise(xyz);
+                            xyz = xyz * 2.0 + shift;
+                            a *= 0.5;
+                        }
+                        return v;
+                    }
+
+    generative-noise:
+        doc:
+            author: 
+                name: Patricio Gonzalez Vivo
+                twitter: patriciogv
+            version: 0.0.1
+            tangram-version: 0.0.7
+            licence: MIT
+            description: |
+                Set of Noise functions.
+                For more information on this theme read [this chapter of The Book of Shaders about Noise](http://thebookofshaders.com/11/).
+        test:
+            noise_float: { blocks: { color: "    color.rgb += noise(v_texcoord.x*2.);" } }
+            noise_vec2: { blocks: { color: "    color.rgb += noise(v_texcoord.xy*2.);" } }
+            noise_vec3: { blocks: { color: "    color.rgb += noise(vec3(v_texcoord.xy*2.,u_time));" } }
+            gnoise_vec2: { blocks: { color: "    color.rgb += gnoise(v_texcoord.xy*2.);" } }
+            gnoise_vec3: { blocks: { color: "    color.rgb += gnoise(vec3(v_texcoord.xy*2.,u_time));" } }
+            snoise_vec2: { blocks: { color: "    color.rgb += snoise(v_texcoord.xy*2.);" } }
+            snoise_vec3: { blocks: { color: "    color.rgb += snoise(vec3(v_texcoord.xy*2.,u_time));" } }
+            noise_float_t: { defines: { NOISE_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += noise(v_texcoord.x*2.);" } }
+            noise_vec2_t: { defines: { NOISE_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += noise(v_texcoord.xy*2.);" } }
+            noise_vec3_t: { defines: { NOISE_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += noise(vec3(v_texcoord.xy,u_time)*2.);" } }
+
+        mix: generative-random
+        shaders:
+            defines:
+                NOISE_TEXSAMPLE_SIZE: 256.0
+            blocks:
+                global: |
+                    // Value Noise 
+                    float noise (in float x) {
+                        #ifdef NOISE_TEXSAMPLE
+                        return texture2D(u_random, vec2(x*(1./NOISE_TEXSAMPLE_SIZE))).r;
+                        #else
+                        float i = floor(x);
+                        float f = fract(x);
+                        f = f * f * (3.0 - 2.0 * f);
+                        return mix(random(i), random(i + 1.0), f);
+                        #endif
+                    }
+
+                    // Value Noise
+                    float noise (vec2 p) {
+                        vec2 i = floor(p);
+                        vec2 f = fract(p);
+                        #ifdef NOISE_TEXSAMPLE
+                        vec2 uv = i.xy + f.xy*f.xy*(3.0-2.0*f.xy);
+                        return texture2D(u_random, fract((uv+118.4)/NOISE_TEXSAMPLE_SIZE) ).x;
+                        #else
+                        f = f * f * (3.0 - 2.0 * f);
+                        float a = random(i);
+                        float b = random(i + vec2(1.0, 0.0));
+                        float c = random(i + vec2(0.0, 1.0));
+                        float d = random(i + vec2(1.0, 1.0));
+                        return mix(a, b, f.x) + (c - a) * f.y * (1.0 - f.x) + (d - b) * f.x * f.y;
+                        #endif
+                    }
+
+                    // Value Noise
+                    float noise (vec3 p) {
+                        vec3 i = floor(p);
+                        vec3 f = fract(p);
+                        f = f*f*(3.0-2.0*f);
+                        #ifdef NOISE_TEXSAMPLE
+                        vec2 uv = (i.xy+vec2(37.0,17.0)*i.z) + f.xy;
+                        vec2 rg = texture2D(u_random, fract((uv+.5)/NOISE_TEXSAMPLE_SIZE), -100.0 ).yx;
+                        return mix( rg.x, rg.y, f.z );
+                        #else
+                        float n = i.x + i.y*57.0 + 113.0*i.z;
+                        return mix(mix(mix(random(n+0.0),random(n+1.0),f.x),mix(random(n+ 57.0),random(n+ 58.0),f.x),f.y),mix(mix(random(n+113.0),random(n+114.0),f.x),mix(random(n+170.0),random(n+171.0),f.x),f.y),f.z);
+                        /*
+                        const vec3 step = vec3(110.0, 241.0, 171.0);
+                        float n = dot(i, step);
+                        return mix( mix(mix(random(n + dot(step, vec3(0,0,0))),
+                                            random(n + dot(step, vec3(1,0,0))), f.x),
+                                        mix(random(n + dot(step, vec3(0,1,0))),
+                                            random(n + dot(step, vec3(1,1,0))), f.x),
+                                        f.y),
+                                    mix(mix(random(n + dot(step, vec3(0,0,1))),
+                                            random(n + dot(step, vec3(1,0,1))), f.x),
+                                        mix(random(n + dot(step, vec3(0,1,1))),
+                                            random(n + dot(step, vec3(1,1,1))), f.x),
+                                    f.y),
+                                f.z);
+                                */
+                        #endif
+                    }
+
+                    // Gradient Noise
+                    // From IQ (https://www.shadertoy.com/view/XdXGW8)
+                    float gnoise (in vec2 p) {
+                        vec2 i = floor( p );
+                        vec2 f = fract( p );
+                        
+                        vec2 u = f*f*(3.0-2.0*f);
+
+                        return mix( mix( dot( random2( i + vec2(0.0,0.0) ), f - vec2(0.0,0.0) ), 
+                                         dot( random2( i + vec2(1.0,0.0) ), f - vec2(1.0,0.0) ), u.x),
+                                    mix( dot( random2( i + vec2(0.0,1.0) ), f - vec2(0.0,1.0) ), 
+                                         dot( random2( i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
+                    }
+
+                    // Gradient Noise
+                    // From IQ (https://www.shadertoy.com/view/Xsl3Dl)
+                    float gnoise (in vec3 p) {
+                        vec3 i = floor( p );
+                        vec3 f = fract( p );
+                        vec3 u = f*f*(3.0-2.0*f);
+
+                        return mix( mix( mix( dot( random3( i + vec3(0.0,0.0,0.0) ), f - vec3(0.0,0.0,0.0) ), 
+                                              dot( random3( i + vec3(1.0,0.0,0.0) ), f - vec3(1.0,0.0,0.0) ), u.x),
+                                         mix( dot( random3( i + vec3(0.0,1.0,0.0) ), f - vec3(0.0,1.0,0.0) ), 
+                                              dot( random3( i + vec3(1.0,1.0,0.0) ), f - vec3(1.0,1.0,0.0) ), u.x), u.y),
+                                    mix( mix( dot( random3( i + vec3(0.0,0.0,1.0) ), f - vec3(0.0,0.0,1.0) ), 
+                                              dot( random3( i + vec3(1.0,0.0,1.0) ), f - vec3(1.0,0.0,1.0) ), u.x),
+                                         mix( dot( random3( i + vec3(0.0,1.0,1.0) ), f - vec3(0.0,1.0,1.0) ), 
+                                              dot( random3( i + vec3(1.0,1.0,1.0) ), f - vec3(1.0,1.0,1.0) ), u.x), u.y), u.z );
+                    }
+
+                    vec3 mod289(vec3 x) { 
+                        return x - floor(x * (1.0 / 289.0)) * 289.0; 
+                    }
+                    vec2 mod289(vec2 x) { 
+                        return x - floor(x * (1.0 / 289.0)) * 289.0; 
+                    }
+                    vec3 permute(vec3 x) { 
+                        return mod289(((x*34.0)+1.0)*x); 
+                    }
+
+                    // Simplex Noise
+                    // from Ian McEwan, Ashima Arts
+                    float snoise(vec2 v) {
+
+                        // Precompute values for skewed triangular grid
+                        const vec4 C = vec4(0.211324865405187,
+                                            // (3.0-sqrt(3.0))/6.0
+                                            0.366025403784439,  
+                                            // 0.5*(sqrt(3.0)-1.0)
+                                            -0.577350269189626,  
+                                            // -1.0 + 2.0 * C.x
+                                            0.024390243902439); 
+                                            // 1.0 / 41.0
+
+                        // First corner (x0)
+                        vec2 i  = floor(v + dot(v, C.yy));
+                        vec2 x0 = v - i + dot(i, C.xx);
+
+                        // Other two corners (x1, x2)
+                        vec2 i1 = vec2(0.0);
+                        i1 = (x0.x > x0.y)? vec2(1.0, 0.0):vec2(0.0, 1.0);
+                        vec2 x1 = x0.xy + C.xx - i1;
+                        vec2 x2 = x0.xy + C.zz;
+
+                        // Do some permutations to avoid
+                        // truncation effects in permutation
+                        i = mod289(i);
+                        vec3 p = permute(
+                                permute( i.y + vec3(0.0, i1.y, 1.0))
+                                    + i.x + vec3(0.0, i1.x, 1.0 ));
+
+                        vec3 m = max(0.5 - vec3(
+                                            dot(x0,x0), 
+                                            dot(x1,x1), 
+                                            dot(x2,x2)
+                                            ), 0.0);
+
+                        m = m*m ;
+                        m = m*m ;
+
+                        // Gradients: 
+                        //  41 pts uniformly over a line, mapped onto a diamond
+                        //  The ring size 17*17 = 289 is close to a multiple 
+                        //      of 41 (41*7 = 287)
+
+                        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                        vec3 h = abs(x) - 0.5;
+                        vec3 ox = floor(x + 0.5);
+                        vec3 a0 = x - ox;
+
+                        // Normalise gradients implicitly by scaling m
+                        // Approximation of: m *= inversesqrt(a0*a0 + h*h);
+                        m *= 1.79284291400159 - 0.85373472095314 * (a0*a0+h*h);
+
+                        // Compute final noise value at P
+                        vec3 g = vec3(0.0);
+                        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                        g.yz = a0.yz * vec2(x1.x,x2.x) + h.yz * vec2(x1.y,x2.y);
+                        return 130.0 * dot(m, g);
+                    }
+
+                    // Simplex Noise
+                    // from Ian McEwan, Ashima Arts
+                    const float F3 =  0.3333333;
+                    const float G3 =  0.1666667;
+                    float snoise (vec3 p) {
+                        vec3 s = floor(p + dot(p, vec3(F3)));
+                        vec3 x = p - s + dot(s, vec3(G3));
+                        vec3 e = step(vec3(0.0), x - x.yzx);
+                        vec3 i1 = e*(1.0 - e.zxy);
+                        vec3 i2 = 1.0 - e.zxy*(1.0 - e);
+                        vec3 x1 = x - i1 + G3;
+                        vec3 x2 = x - i2 + 2.0*G3;
+                        vec3 x3 = x - 1.0 + 3.0*G3;
+                        vec4 w, d;
+                        w.x = dot(x, x);
+                        w.y = dot(x1, x1);
+                        w.z = dot(x2, x2);
+                        w.w = dot(x3, x3);
+                        w = max(0.6 - w, 0.0);
+                        d.x = dot(random3(s), x);
+                        d.y = dot(random3(s + i1), x1);
+                        d.z = dot(random3(s + i2), x2);
+                        d.w = dot(random3(s + 1.0), x3);
+                        w *= w;
+                        w *= w;
+                        d *= w;
+                        return dot(d, vec4(52.0));
+                    }
+
+    generative-random:
+        doc:
+            author: 
+                name: Patricio Gonzalez Vivo
+                twitter: patriciogv
+            version: 0.0.1
+            tangram-version: 0.0.7
+            licence: MIT
+            description: |
+                Set of functions about random.
+                For more information on this theme read [this chapter of The Book of Shaders about Random](http://thebookofshaders.com/10/).
+        test:
+            random_float: { blocks: { color: "    color.rgb += random(v_texcoord.x*2.);" } }
+            random_vec2: { blocks: { color: "    color.rgb += random(v_texcoord.xy*2.);" } }
+            random_vec3: { blocks: { color: "    color.rgb += random(vec3(v_texcoord.xy*2.,u_time));" } }
+            random2_vec2: { blocks: { color: "    color.rg += random2(v_texcoord.xy*2.);" } }
+            random3_vec2: { blocks: { color: "    color.rgb += random3(v_texcoord.xy*2.);" } }
+            random3_vec3: { blocks: { color: "    color.rgb += random3(vec3(v_texcoord.xy*2.,u_time));" } }
+            random_float_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += random(v_texcoord.x*2.);" } }
+            random_vec2_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += random(v_texcoord.xy*2.);" } }
+            random_vec3_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += random(vec3(v_texcoord.xy*2.,u_time));" } }
+            random2_vec2_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rg += random2(v_texcoord.xy*2.);" } }
+            random3_vec2_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += random3(v_texcoord.xy*2.);" } }
+            random3_vec3_t: { defines: { RANDOM_TEXSAMPLE: 1 }, blocks: { color: "    color.rgb += random3(vec3(v_texcoord.xy*2.,u_time));" } }
+            
+        shaders:
+            uniforms:
+                u_random: https://tangrams.github.io/blocks/generative/imgs/tex16.png
+            blocks:
+                global: |
+                    vec3 random3 (vec2 p) {
+                        #ifdef RANDOM_TEXSAMPLE
+                        return texture2D(u_random,fract(p*2.),-100.).rgb;
+                        #else
+                        return fract(sin(vec3( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)), dot(p,vec2(419.2,371.9)) ))*43758.5453); 
+                        #endif
+                    }
+                    vec3 random3 (vec3 p) {
+                        #ifdef RANDOM_TEXSAMPLE
+                        vec2 uv = fract(p.xy+vec2(37.0,17.0)*p.z);
+                        return texture2D(u_random, fract(uv*2.), -100.0).rgb;
+                        #else
+                        float j = 4096.0*sin(dot(p,vec3(17.0, 59.4, 15.0)));
+                        vec3 r;
+                        r.z = fract(512.0*j);
+                        j *= .125;
+                        r.x = fract(512.0*j);
+                        j *= .125;
+                        r.y = fract(512.0*j);
+                        return r-0.5;
+                        #endif
+                    }
+                    vec2 random2 (vec2 p) { 
+                        #ifdef RANDOM_TEXSAMPLE
+                        return random3(p).rg;
+                        #else
+                        return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453); 
+                        #endif
+                    }
+                    float random (float x) { 
+                        return fract(sin(x)*43758.5453);
+                    }
+                    float random (vec2 p) { 
+                        #ifdef RANDOM_TEXSAMPLE
+                        return random3(p).r;
+                        #else
+                        return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); 
+                        #endif
+                    }
+                    float random (vec3 p) { 
+                        #ifdef RANDOM_TEXSAMPLE
+                        return random3(p).r;
+                        #else
+                        return fract(sin(dot(p.xyz, vec3(70.9898,78.233,32.4355)))* 43758.5453123); 
+                        #endif
+                    }
